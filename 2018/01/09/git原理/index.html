@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.2" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="Hexo, NexT" />
+
+
+
+
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=5.1.2" />
+
+
+
+
+
+
+<meta name="description" content="Git是一个内容寻址文件系统, Git常用的命令大概30个, 但总共有130多个命令（git help -a 查看）由于 Git 最初是一套面向版本控制系统的工具集，所以它还 包含了一部分用于完成底层工作的命令。 当在一个目录使用git init时，会创建一个.git目录。这个目录包含所有git存储和操作的对象。如果想备份或复制一个版本库，只需要把这个目录拷贝到另一个项目里，.git目录内容如下1">
+<meta property="og:type" content="article">
+<meta property="og:title" content="git原理">
+<meta property="og:url" content="http://yoursite.com/2018/01/09/git原理/index.html">
+<meta property="og:site_name" content="绵绵">
+<meta property="og:description" content="Git是一个内容寻址文件系统, Git常用的命令大概30个, 但总共有130多个命令（git help -a 查看）由于 Git 最初是一套面向版本控制系统的工具集，所以它还 包含了一部分用于完成底层工作的命令。 当在一个目录使用git init时，会创建一个.git目录。这个目录包含所有git存储和操作的对象。如果想备份或复制一个版本库，只需要把这个目录拷贝到另一个项目里，.git目录内容如下1">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://yoursite.com/2018/01/09/git原理/progit.png">
+<meta property="og:image" content="http://yoursite.com/2018/01/09/git原理/命令划分.png">
+<meta property="og:image" content="http://yoursite.com/2018/01/09/git原理/对象区分.png">
+<meta property="og:image" content="http://yoursite.com/2018/01/09/git原理/数据模型.png">
+<meta property="og:image" content="http://yoursite.com/2018/01/09/git原理/git文件状态.png">
+<meta property="og:image" content="http://yoursite.com/2018/01/09/git原理/当前git数据内容结构.png">
+<meta property="og:image" content="http://yoursite.com/2018/01/09/git原理/提交对象和树对象.png">
+<meta property="og:updated_time" content="2018-01-11T10:26:23.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="git原理">
+<meta name="twitter:description" content="Git是一个内容寻址文件系统, Git常用的命令大概30个, 但总共有130多个命令（git help -a 查看）由于 Git 最初是一套面向版本控制系统的工具集，所以它还 包含了一部分用于完成底层工作的命令。 当在一个目录使用git init时，会创建一个.git目录。这个目录包含所有git存储和操作的对象。如果想备份或复制一个版本库，只需要把这个目录拷贝到另一个项目里，.git目录内容如下1">
+<meta name="twitter:image" content="http://yoursite.com/2018/01/09/git原理/progit.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.2',
+    sidebar: {"position":"left","display":"post","offset":12,"offset_float":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/01/09/git原理/"/>
+
+
+
+
+
+  <title>git原理 | 绵绵</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">绵绵</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-首页">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-关于">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br />
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-归档">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/01/09/git原理/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="butingting">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="绵绵">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">git原理</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2018-01-09T18:53:20+08:00">
+                2018-01-09
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2018/01/09/git原理/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count disqus-comment-count"
+                        data-disqus-identifier="2018/01/09/git原理/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p><img src="/2018/01/09/git原理/progit.png" alt="命令区分"><br>Git是一个内容寻址文件系统, Git常用的命令大概30个, 但总共有130多个命令（git help -a 查看）<br>由于 Git 最初是一套面向版本控制系统的工具集，所以它还 包含了一部分用于完成底层工作的命令。<br><img src="/2018/01/09/git原理/命令划分.png" alt="命令区分"></p>
+<p>当在一个目录使用git init时，会创建一个.git目录。这个目录包含所有git存储和操作的对象。如果想备份或复制一个版本库，只需要把这个目录拷贝到另一个项目里，.git目录内容如下<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line">$ ls -F1</div><div class="line">HEAD                --- 目前被检出的分支</div><div class="line">config              --- 仓库配置文件</div><div class="line">description         --- 供GitWeb程序使用</div><div class="line">hooks/              --- 客户端或服务端的钩子脚本</div><div class="line">info/               --- 全局性排除文件，用以防止那些不希望被记录在.gitignore文件中的略模式</div><div class="line">objects/            --- 存储所有数据内容</div><div class="line">refs/               --- 存储指向数据的提交对象的指针</div></pre></td></tr></table></figure></p>
+<h2 id="Objects"><a href="#Objects" class="headerlink" title="Objects"></a>Objects</h2><p>Git的核心部分是一个简单的键值对数据库，你可以向该数据库插入任意类型的内容，它会返回一个键值，通过该键值可以在任意时刻再次检索该内容。我们通过<strong>hash-object</strong>来操作这一过程<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">$echo &apos;test content&apos; | git hash-object -w --stdin</div><div class="line">d670460b4b4aece5915caf5c68d12f560a9fe3e4</div></pre></td></tr></table></figure></p>
+<p>这是一个 SHA-1（<em>英语：Secure Hash Algorithm 1，中文名：安全散列算法1,是一种密码散列函数</em>)哈希值——一个将待存储的数据外加一个头部信息(header)一起 做 SHA-1 校验运算而得的校验和</p>
+<p>现在我们可以查看 Git 是如何存储数据的:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">$ find .git/objects -type f</div><div class="line">.git/objects/d6/70460b4b4aece5915caf5c68d12f560a9fe3e4</div></pre></td></tr></table></figure>
+<p>前两个字符用于命名子目录，余下的 38 个字符 则用作文件名</p>
+<p>可以通过<strong>cat-file</strong>命令从git那里取回数据。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">$git cat-file -p d670460b4b4aece5915caf5c68d12f560a9fe3e4</div><div class="line">test content</div></pre></td></tr></table></figure>
+<p>我们就可以模拟对文件进行简单的版本控制</p>
+<p>首先创建一个新文件并将其内容存入数据库：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">$ echo &apos;version 1&apos; &gt; test.txt</div><div class="line">$ git hash-object -w test.txt</div><div class="line">83baae61804e65cc73a7201a7252750c76066a30</div></pre></td></tr></table></figure></p>
+<p>接着，向文件里写入新内容，并再次将其存入数据库：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">$ echo &apos;version 2&apos; &gt; test.txt</div><div class="line">$ git hash-object -w test.txt</div><div class="line">1f7a7a472abf3dd9643fd615f6da379c4acb3e3a</div></pre></td></tr></table></figure></p>
+<p>数据库记录下了该文件的两个不同版本，当然之前我们存入的第一条内容也还在:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">$ find .git/objects -type f</div><div class="line">.git/objects/1f/7a7a472abf3dd9643fd615f6da379c4acb3e3a</div><div class="line">.git/objects/83/baae61804e65cc73a7201a7252750c76066a30</div><div class="line">.git/objects/d6/70460b4b4aece5915caf5c68d12f560a9fe3e4</div></pre></td></tr></table></figure></p>
+<p>把文件内容恢复到第一个版本：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">$ git cat-file -p 83baae61804e65cc73a7201a7252750c76066a30 &gt; test.txt</div><div class="line">$ cat test.txt</div><div class="line">version 1</div></pre></td></tr></table></figure></p>
+<p>上述类型的对象，我们称之为数据对象，除了数据对象以外，用来保存文件夹和提交的对象分别为 <strong>树对象</strong>，<strong>提交对象</strong></p>
+<h3 id="树对象-tree-object"><a href="#树对象-tree-object" class="headerlink" title="树对象(tree object)"></a>树对象(tree object)</h3><p>它能解决文件名保存的问题，也允许我们将多个文件组织到一起。Git 本身是以一种类似于 UNIX 文件系统的方式存储内容，但作了些许简化。所有内容均以树对象和数据对象的 形式存储，其中树对象对应了 UNIX 中的目录项，数据对象则大致上对应了文件内容。<br><img src="/2018/01/09/git原理/对象区分.png" alt="对象类型"><br>一个树对象包 含了一条或多条树对象记录(tree entry)，每条记录含有一个指向数据对象或者子树对象的 SHA-1 指针，以及 相应的模式、类型、文件名信息。<br>比如 某项目当前对应的树对象可能是这样的：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">$ git cat-file -p master^&#123;tree&#125;</div><div class="line">100644 blob a906cb2a4a904a152e80877d4088654daad0c859 README</div><div class="line">100644 blob 8f94139338f9404f26296befa88755fc2598c289 Rakefile</div><div class="line">040000 tree 99f1a6d12cb4b6f19c8655fca46c3ecf317074e0 lib</div></pre></td></tr></table></figure>
+<p>我们指定的文件模式为 100644 表明这是一个普通文件，其他选择包括:100755，表示一个可执行 文件;120000，表示一个符号链接。</p>
+<p><strong>master^{tree}</strong> 语法表示 master 分支上最新的提交所指向的树对象。 lib子目录对应的并不是一个数据对象，而是一个指针，指向另外一个数据对象<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">$ git cat-file -p 99f1a6d12cb4b6f19c8655fca46c3ecf317074e0</div><div class="line">100644 blob 47c6340d6459e05787f644c2447d2595f5d3a54b   simplegit.rb</div></pre></td></tr></table></figure></p>
+<p>从概念上讲，Git 内部存储的数据有点像这样：</p>
+<p><img src="/2018/01/09/git原理/数据模型.png" alt="git数据模型"><br>根据这种机制，Git根据某一时刻暂存区所表示的状态创建并记录一个对应的树对象，如此重复便可一次记录一系列树对象。<br>git中的文件的状态变化周期：<br>你工作目录下的每一个文件都不外乎这两种状态:已跟踪或未跟踪。已跟踪的文件是指那些被纳入了版<br>本控制的文件，在上一次快照中有它们的记录，在工作一段时间后，它们的状态可能处于未修改，已修改或已放入暂存区。<br><img src="/2018/01/09/git原理/git文件状态.png" alt="git文件状态"><br>我们可以通过底层命令 <strong>update-index</strong>为一个单独文件如test.txt的首个版本创建一个暂存区。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">$ git update-index --add --cacheinfo 100644 \</div><div class="line">83baae61804e65cc73a7201a7252750c76066a30 test.txt</div></pre></td></tr></table></figure></p>
+<p>然后通过write-tree 命令将暂存区内容写入一个树对象. （git add .）<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">$ git write-tree</div><div class="line">d8329fc1cc938780ffdd9f94e0d364e0ea74f579</div><div class="line"></div><div class="line">$ git cat-file -p d8329fc1cc938780ffdd9f94e0d364e0ea74f579</div><div class="line">100644 blob 83baae61804e65cc73a7201a7252750c76066a30 test.txt</div></pre></td></tr></table></figure></p>
+<p>接着我们来做一些新的更改，比如创建一个新文件，以及更改test.txt文件<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">$ echo &apos;new file&apos; &gt; new.txt</div><div class="line">$ git update-index --add new.txt</div><div class="line"></div><div class="line">$ echo &apos;version 2&apos; &gt; test.txt</div><div class="line">$ git hash-object -w test.txt</div><div class="line">1f7a7a472abf3dd9643fd615f6da379c4acb3e3a</div><div class="line">$ git update-index test.txt</div></pre></td></tr></table></figure></p>
+<p>记录下这个目录树<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">$git write-tree</div><div class="line">0155eb4229851634a0f03eb265b69f5a2d56f341</div><div class="line"></div><div class="line">$ git cat-file -p 0155eb4229851634a0f03eb265b69f5a2d56f341</div><div class="line">100644 blob fa49b077972391ad58037050f2a75f74e3671e92      new.txt</div><div class="line">100644 blob 1f7a7a472abf3dd9643fd615f6da379c4acb3e3a      test.txt</div></pre></td></tr></table></figure></p>
+<p>当前Git内部存储数据结构大概是这样：<br><img src="/2018/01/09/git原理/当前git数据内容结构.png" alt="git数据结构"></p>
+<h3 id="提交对象"><a href="#提交对象" class="headerlink" title="提交对象"></a>提交对象</h3><p>目前不同的文件改动快照已经都记录下来了，若想重用这些快照，你必须记住 所有三个 SHA-1 哈希值。并且，你也完全不知道是谁保存了这些快照，在什么时刻保存的，以及为什么保存这 些快照。而以上这些，正是提交对象(commit object)能为你保存的基本信息。</p>
+<p>可以通过调用<strong>commit-tree</strong>命令创建一个提交对象，为此需要指定一个树对象的 SHA-1 值，以及该提交的父提交对象(如果有的话)。我们从之前创建的第一个树对象开始:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">$ echo &apos;first commit&apos; | git commit-tree d8329f</div><div class="line">fdf4fc3344e67ab068f836878b6c4951e3b15f3d</div></pre></td></tr></table></figure>
+<p>现在可以通过 cat-file 命令查看这个新提交对象:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">$ git cat-file -p fdf4fc3</div><div class="line">tree d8329fc1cc938780ffdd9f94e0d364e0ea74f579</div><div class="line">author Scott Chacon &lt;schacon@gmail.com&gt; 1243040974 -0700</div><div class="line">committer Scott Chacon &lt;schacon@gmail.com&gt; 1243040974 -0700</div><div class="line">first commit</div></pre></td></tr></table></figure>
+<p>提交对象的格式很简单:它先指定一个顶层树对象，代表当前项目快照;然后是作者/提交者信息(依据你的 user.name 和 user.email 配置来设定，外加一个时间戳);留空一行，最后是提交注释。</p>
+<p>接着，我们将创建另两个提交对象，它们分别引用各自的上一个提交(作为其父提交对象):</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">$ echo &apos;second commit&apos; | git commit-tree 0155eb -p fdf4fc3</div><div class="line">cac0cab538b970a37ea1e769cbbde608743bc96d</div><div class="line">$ echo &apos;third commit&apos;  | git commit-tree 3c4e9c -p cac0cab</div><div class="line">1a410efbd13591db07496601ebc7a059dd55cfe9</div></pre></td></tr></table></figure>
+<p>提交对象和树对象的关系是这样的：</p>
+<p><img src="/2018/01/09/git原理/提交对象和树对象.png" alt="提交对象和树对象"></p>
+<p>没有借助任何上层命令，仅凭几个底层操作便完成了一个 Git 提交历史的创建。这就是 每次我们运行git add和git commit命令时，Git所做的实质工作——将被改写的文件保存为数据对象，更新暂存区，记录树对象，最后创建一个指明了顶层树对象和父提交的提交对象。这三种主要的 Git对象——数据对象、树对象、提交对象——最初均以单独文件的形式保存在 .git/objects 目录下。下面列出了目前示例目 录内的所有对象，辅以各自所保存内容的注释:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">$ find .git/objects -type f</div><div class="line">.git/objects/01/55eb4229851634a0f03eb265b69f5a2d56f341 # tree 2</div><div class="line">.git/objects/1a/410efbd13591db07496601ebc7a059dd55cfe9 # commit 3</div><div class="line">.git/objects/1f/7a7a472abf3dd9643fd615f6da379c4acb3e3a # test.txt v2</div><div class="line">.git/objects/3c/4e9cd789d88d8d89c1073707c3585e41b0e614 # tree 3</div><div class="line">.git/objects/83/baae61804e65cc73a7201a7252750c76066a30 # test.txt v1</div><div class="line">.git/objects/ca/c0cab538b970a37ea1e769cbbde608743bc96d # commit 2</div><div class="line">.git/objects/d6/70460b4b4aece5915caf5c68d12f560a9fe3e4 # &apos;test content&apos;</div><div class="line">.git/objects/d8/329fc1cc938780ffdd9f94e0d364e0ea74f579 # tree 1</div><div class="line">.git/objects/fa/49b077972391ad58037050f2a75f74e3671e92 # new.txt</div><div class="line">.git/objects/fd/f4fc3344e67ab068f836878b6c4951e3b15f3d # commit</div></pre></td></tr></table></figure>
+<p>而此时如果运行git log就可以看到git的提交历史了</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div></pre></td><td class="code"><pre><div class="line">$ git log --stat 1a410e</div><div class="line">commit 1a410efbd13591db07496601ebc7a059dd55cfe9</div><div class="line">Author: Scott Chacon &lt;schacon@gmail.com&gt;</div><div class="line">Date:   Fri May 22 18:15:24 2009 -0700</div><div class="line"></div><div class="line">third commit</div><div class="line">    bak/test.txt | 1 +</div><div class="line">    1 file changed, 1 insertion(+)</div><div class="line"></div><div class="line">commit cac0cab538b970a37ea1e769cbbde608743bc96d</div><div class="line">Author: Scott Chacon &lt;schacon@gmail.com&gt;</div><div class="line">Date:   Fri May 22 18:14:29 2009 -0700</div><div class="line"></div><div class="line">second commit</div><div class="line">   new.txt  | 1 +</div><div class="line">   test.txt | 2 +-</div><div class="line">   2 files changed, 2 insertions(+), 1 deletion(-)</div><div class="line"></div><div class="line">commit fdf4fc3344e67ab068f836878b6c4951e3b15f3d</div><div class="line">Author: Scott Chacon &lt;schacon@gmail.com&gt;</div><div class="line">Date:   Fri May 22 18:09:34 2009 -0700</div><div class="line"></div><div class="line">first commit</div><div class="line">    test.txt | 1 +</div><div class="line">   1 file changed, 1 insertion(+)</div></pre></td></tr></table></figure>
+<blockquote>
+<p>pro git （第二版）<br><a href="http://yanhaijing.com/git/2017/02/08/deep-git-3/" target="_blank" rel="external">起底git-git内部原理</a></p>
+</blockquote>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2017/09/18/移动端适配/" rel="next" title="移动端适配">
+                <i class="fa fa-chevron-left"></i> 移动端适配
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+      <div id="disqus_thread">
+        <noscript>
+          Please enable JavaScript to view the
+          <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+        </noscript>
+      </div>
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          
+            <p class="site-author-name" itemprop="name">butingting</p>
+            <p class="site-description motion-element" itemprop="description">个人浅见，仅供参考</p>
+        </div>
+
+        <nav class="site-state motion-element">
+
+          
+            <div class="site-state-item site-state-posts">
+            
+              <a href="/archives">
+            
+                <span class="site-state-item-count">4</span>
+                <span class="site-state-item-name">日志</span>
+              </a>
+            </div>
+          
+
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-tags">
+              
+                <span class="site-state-item-count">2</span>
+                <span class="site-state-item-name">标签</span>
+              
+            </div>
+          
+
+        </nav>
+
+        
+
+        <div class="links-of-author motion-element">
+          
+        </div>
+
+        
+        
+
+        
+        
+
+        
+
+
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Objects"><span class="nav-number">1.</span> <span class="nav-text">Objects</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#树对象-tree-object"><span class="nav-number">1.1.</span> <span class="nav-text">树对象(tree object)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#提交对象"><span class="nav-number">1.2.</span> <span class="nav-text">提交对象</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy; 
+  <span itemprop="copyrightYear">2018</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">butingting</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+  <span class="post-meta-divider">|</span>
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">NexT.Pisces</a> v5.1.2</div>
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  
+  <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.2"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.2"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.2"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.2"></script>
+
+
+
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.2"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.2"></script>
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.2"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.2"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.2"></script>
+
+
+
+  
+
+
+  
+
+    
+      <script id="dsq-count-scr" src="https://buting.disqus.com/count.js" async></script>
+    
+
+    
+      <script type="text/javascript">
+        var disqus_config = function () {
+          this.page.url = 'http://yoursite.com/2018/01/09/git原理/';
+          this.page.identifier = '2018/01/09/git原理/';
+          this.page.title = 'git原理';
+        };
+        var d = document, s = d.createElement('script');
+        s.src = 'https://buting.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', '' + +new Date());
+        (d.head || d.body).appendChild(s);
+      </script>
+    
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
